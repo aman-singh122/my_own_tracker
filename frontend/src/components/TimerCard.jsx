@@ -28,6 +28,7 @@ export default function TimerCard({
 }) {
   const label = useMemo(() => formatTime(timer.seconds || 0), [timer.seconds]);
   const activeCategory = timer.category || selectedCategory || "dsa";
+  const stateLabel = timer.status === "running" ? "Running" : timer.status === "paused" ? "Paused" : "Idle";
 
   return (
     <section className="panel p-5 space-y-4">
@@ -36,6 +37,10 @@ export default function TimerCard({
       <p className="text-sm text-slate-300">
         Focus subject: <span className="text-cyan-300 font-semibold capitalize">{activeCategory}</span>
       </p>
+      <div className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1 text-xs">
+        <span className={`h-2 w-2 rounded-full ${timer.status === "running" ? "bg-emerald-400" : timer.status === "paused" ? "bg-yellow-400" : "bg-slate-500"}`} />
+        {stateLabel}
+      </div>
       <div className="flex flex-wrap gap-2">
         {categoryList.map((item) => {
           const isActive = activeCategory === item.key;

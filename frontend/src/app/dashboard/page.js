@@ -23,6 +23,17 @@ export default function DashboardPage() {
   const router = useRouter();
 
   const currentDayNumber = useMemo(() => summary?.currentDayNumber || 1, [summary]);
+  const liveCategoryHours = useMemo(() => {
+    const base = { ...(summary?.categoryHours || {}) };
+    const sessionHours = Number((timer.seconds || 0) / 3600);
+    const active = timer.category || selectedCategory || "dsa";
+
+    if (timer.status === "running" || timer.status === "paused") {
+      base[active] = Number(base[active] || 0) + sessionHours;
+    }
+
+    return base;
+  }, [summary, timer, selectedCategory]);
 
   const loadData = async () => {
     try {
@@ -157,7 +168,7 @@ export default function DashboardPage() {
             activeDayNumber={currentDayNumber}
           />
 
-          <CategoryHoursSection categoryHours={summary?.categoryHours || {}} />
+          <CategoryHoursSection categoryHours={liveCategoryHours} />
 
           <section className="panel p-4 space-y-3">
             <h2 className="text-lg font-semibold">Days Grid</h2>
