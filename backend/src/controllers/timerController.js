@@ -1,6 +1,7 @@
 const DayRecord = require("../models/DayRecord");
 const TimerSession = require("../models/TimerSession");
 const { getCurrentDayNumber } = require("../utils/trackerDate");
+const { STUDY_CATEGORIES, buildCategorySecondsObject } = require("../utils/studyCategories");
 
 const computeSeconds = (session) => {
   if (!session) return 0;
@@ -17,22 +18,34 @@ const getOrCreateTimerSession = async (userId, dayNumber = 1) => {
       user: userId,
       dayNumber,
       status: "idle",
+      category: "dsa",
       accumulatedSeconds: 0,
       startedAt: null,
     });
   }
+
+  if (!STUDY_CATEGORIES.includes(session.category)) {
+    session.category = "dsa";
+    await session.save();
+  }
+
   return session;
 };
 
 const startTimer = async (req, res, next) => {
   try {
     const dayNumber = Number(req.body.dayNumber);
+    const category = String(req.body.category || "").toLowerCase();
     const currentDayNumber = getCurrentDayNumber();
 
     if (dayNumber !== currentDayNumber) {
       return res.status(403).json({
         message: `Timer can only start on current day. Active day is Day ${currentDayNumber}.`,
       });
+    }
+
+    if (!STUDY_CATEGORIES.includes(category)) {
+      return res.status(400).json({ message: "Invalid study category" });
     }
 
     const day = await DayRecord.findOne({ user: req.user._id, dayNumber });
@@ -47,6 +60,7 @@ const startTimer = async (req, res, next) => {
     }
 
     session.dayNumber = dayNumber;
+    session.category = category;
     session.status = "running";
     session.startedAt = new Date();
     await session.save();
@@ -55,6 +69,7 @@ const startTimer = async (req, res, next) => {
       message: "Timer started",
       timer: {
         dayNumber: session.dayNumber,
+        category: session.category,
         status: session.status,
         seconds: computeSeconds(session),
       },
@@ -82,6 +97,7 @@ const pauseTimer = async (req, res, next) => {
       message: "Timer paused",
       timer: {
         dayNumber: session.dayNumber,
+        category: session.category,
         status: session.status,
         seconds: session.accumulatedSeconds,
       },
@@ -113,7 +129,13 @@ const stopTimer = async (req, res, next) => {
       return res.status(404).json({ message: "Day record not found" });
     }
 
+    if (!day.categorySecondsLogged) {
+      day.categorySecondsLogged = buildCategorySecondsObject();
+    }
+
     day.timerSecondsLogged += totalSeconds;
+    day.categorySecondsLogged[session.category] =
+      (day.categorySecondsLogged[session.category] || 0) + totalSeconds;
     await day.save();
 
     session.status = "idle";
@@ -127,6 +149,8 @@ const stopTimer = async (req, res, next) => {
       day: {
         dayNumber: day.dayNumber,
         timerSecondsLogged: day.timerSecondsLogged,
+        category: session.category,
+        categorySecondsLogged: day.categorySecondsLogged,
         totalHours: Number((day.manualHoursLogged + day.timerSecondsLogged / 3600).toFixed(2)),
       },
     });
@@ -142,6 +166,7 @@ const getCurrentTimer = async (req, res, next) => {
     res.status(200).json({
       timer: {
         dayNumber: session.dayNumber,
+        category: session.category,
         status: session.status,
         seconds: computeSeconds(session),
       },

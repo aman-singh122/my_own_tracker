@@ -55,6 +55,13 @@ const dayRecordSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    categorySecondsLogged: {
+      dsa: { type: Number, default: 0, min: 0 },
+      backend: { type: Number, default: 0, min: 0 },
+      college: { type: Number, default: 0, min: 0 },
+      english: { type: Number, default: 0, min: 0 },
+      blockchain: { type: Number, default: 0, min: 0 },
+    },
     completed: {
       type: Boolean,
       default: false,

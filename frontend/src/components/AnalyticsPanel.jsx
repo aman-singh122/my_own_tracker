@@ -29,19 +29,19 @@ const BarChart = ({ weekly }) => {
   );
 };
 
-const CategoryChart = ({ categories }) => {
-  const entries = Object.entries(categories || {});
+const CategoryChart = ({ categoryHours, categoryDaysCount }) => {
+  const entries = Object.entries(categoryHours || {});
   const max = Math.max(...entries.map(([, value]) => value), 1);
 
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-semibold text-slate-300">Category Execution</h3>
+      <h3 className="text-sm font-semibold text-slate-300">Category Study Hours</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {entries.map(([name, value]) => (
           <div key={name} className="rounded-lg border border-slate-700 bg-slate-900/60 p-3">
             <div className="flex items-center justify-between text-xs text-slate-400">
               <span className="capitalize">{name}</span>
-              <span>{value} days</span>
+              <span>{Number(value || 0).toFixed(2)}h</span>
             </div>
             <div className="mt-2 h-2 rounded-full bg-slate-800 overflow-hidden">
               <div
@@ -49,6 +49,9 @@ const CategoryChart = ({ categories }) => {
                 style={{ width: `${Math.round((value / max) * 100)}%` }}
               />
             </div>
+            <p className="mt-2 text-[11px] text-slate-500">
+              Active days: {categoryDaysCount?.[name] || 0}
+            </p>
           </div>
         ))}
       </div>
@@ -68,7 +71,10 @@ export default function AnalyticsPanel({ analytics }) {
         <p className="text-xs text-slate-400">Live through Day {analytics.currentDayNumber}</p>
       </div>
       <BarChart weekly={analytics.weekly || []} />
-      <CategoryChart categories={analytics.categories || {}} />
+      <CategoryChart
+        categoryHours={analytics.categoryHours || {}}
+        categoryDaysCount={analytics.categoryDaysCount || {}}
+      />
     </section>
   );
 }

@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { STUDY_CATEGORIES } = require("../utils/studyCategories");
 
 const timerSessionSchema = new mongoose.Schema(
   {
@@ -18,6 +19,11 @@ const timerSessionSchema = new mongoose.Schema(
       type: String,
       enum: ["idle", "running", "paused"],
       default: "idle",
+    },
+    category: {
+      type: String,
+      enum: STUDY_CATEGORIES,
+      default: "dsa",
     },
     startedAt: {
       type: Date,

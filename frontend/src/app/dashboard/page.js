@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import DayGrid from "@/components/DayGrid";
 import TimerCard from "@/components/TimerCard";
 import AnalyticsPanel from "@/components/AnalyticsPanel";
+import CategoryHoursSection from "@/components/CategoryHoursSection";
 import { apiRequest } from "@/lib/api";
 import { clearAuthToken, getAuthToken } from "@/lib/auth";
 
@@ -14,7 +15,8 @@ export default function DashboardPage() {
   const [days, setDays] = useState([]);
   const [summary, setSummary] = useState(null);
   const [analytics, setAnalytics] = useState(null);
-  const [timer, setTimer] = useState({ status: "idle", seconds: 0, dayNumber: 1 });
+  const [timer, setTimer] = useState({ status: "idle", seconds: 0, dayNumber: 1, category: "dsa" });
+  const [selectedCategory, setSelectedCategory] = useState("dsa");
   const [activeTab, setActiveTab] = useState("execution");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -33,7 +35,9 @@ export default function DashboardPage() {
       setSummary(dashboardData.summary);
       setAnalytics(analyticsData.analytics);
       const serverDay = dashboardData.summary?.currentDayNumber || 1;
-      setTimer(timerData.timer || { status: "idle", seconds: 0, dayNumber: serverDay });
+      const timerPayload = timerData.timer || { status: "idle", seconds: 0, dayNumber: serverDay, category: "dsa" };
+      setTimer(timerPayload);
+      setSelectedCategory(timerPayload.category || "dsa");
     } catch (err) {
       setError(err.message);
       if (err.status === 401) {
@@ -68,9 +72,10 @@ export default function DashboardPage() {
     try {
       const data = await apiRequest("/timer/start", {
         method: "POST",
-        body: JSON.stringify({ dayNumber: currentDayNumber }),
+        body: JSON.stringify({ dayNumber: currentDayNumber, category: selectedCategory }),
       });
       setTimer(data.timer);
+      setSelectedCategory(data.timer.category || selectedCategory);
     } catch (err) {
       setError(err.message);
     }
@@ -81,6 +86,7 @@ export default function DashboardPage() {
     try {
       const data = await apiRequest("/timer/pause", { method: "POST" });
       setTimer(data.timer);
+      setSelectedCategory(data.timer.category || selectedCategory);
     } catch (err) {
       setError(err.message);
     }
@@ -146,8 +152,12 @@ export default function DashboardPage() {
             onStart={startTimer}
             onPause={pauseTimer}
             onStop={stopTimer}
+            onCategoryChange={setSelectedCategory}
+            selectedCategory={selectedCategory}
             activeDayNumber={currentDayNumber}
           />
+
+          <CategoryHoursSection categoryHours={summary?.categoryHours || {}} />
 
           <section className="panel p-4 space-y-3">
             <h2 className="text-lg font-semibold">Days Grid</h2>

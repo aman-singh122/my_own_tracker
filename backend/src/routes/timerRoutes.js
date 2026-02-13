@@ -1,5 +1,6 @@
 const express = require("express");
 const { body } = require("express-validator");
+const { STUDY_CATEGORIES } = require("../utils/studyCategories");
 const {
   startTimer,
   pauseTimer,
@@ -17,7 +18,10 @@ router.get("/current", getCurrentTimer);
 
 router.post(
   "/start",
-  [body("dayNumber").isInt({ min: 1, max: 180 })],
+  [
+    body("dayNumber").isInt({ min: 1, max: 180 }),
+    body("category").isString().isIn(STUDY_CATEGORIES),
+  ],
   handleValidation,
   startTimer
 );

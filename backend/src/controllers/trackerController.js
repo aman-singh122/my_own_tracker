@@ -1,12 +1,19 @@
 const DayRecord = require("../models/DayRecord");
 const { TRACKER_TOTAL_DAYS, getCurrentDayNumber, startDateAtUtcMidnight } = require("../utils/trackerDate");
+const { STUDY_CATEGORIES, buildCategorySecondsObject } = require("../utils/studyCategories");
 
 const formatDayRecord = (record) => {
   const timerHours = record.timerSecondsLogged / 3600;
   const totalHours = Number((timerHours + record.manualHoursLogged).toFixed(2));
+  const categorySeconds = record.categorySecondsLogged || buildCategorySecondsObject();
+  const categoryHours = STUDY_CATEGORIES.reduce((acc, key) => {
+    acc[key] = Number(((categorySeconds[key] || 0) / 3600).toFixed(2));
+    return acc;
+  }, {});
   return {
     ...record.toObject(),
     totalHours,
+    categoryHours,
   };
 };
 
@@ -15,11 +22,16 @@ const getDashboard = async (req, res, next) => {
     const records = await DayRecord.find({ user: req.user._id }).sort({ dayNumber: 1 });
     const currentDayNumber = getCurrentDayNumber();
 
+    const categorySecondsTotals = buildCategorySecondsObject();
     const totals = records.reduce(
       (acc, record) => {
         const totalHours = record.manualHoursLogged + record.timerSecondsLogged / 3600;
         if (record.completed) acc.completedDays += 1;
         acc.totalHours += totalHours;
+        const categorySeconds = record.categorySecondsLogged || buildCategorySecondsObject();
+        STUDY_CATEGORIES.forEach((key) => {
+          categorySecondsTotals[key] += categorySeconds[key] || 0;
+        });
         return acc;
       },
       { completedDays: 0, totalHours: 0 }
@@ -36,6 +48,10 @@ const getDashboard = async (req, res, next) => {
         progressPercent,
         currentDayNumber,
         trackerStartDate: startDateAtUtcMidnight(),
+        categoryHours: STUDY_CATEGORIES.reduce((acc, key) => {
+          acc[key] = Number((categorySecondsTotals[key] / 3600).toFixed(2));
+          return acc;
+        }, {}),
       },
     });
   } catch (error) {
@@ -54,13 +70,14 @@ const getTrackerAnalytics = async (req, res, next) => {
       completedDays: 0,
     }));
 
-    const categories = {
+    const categoryDaysCount = {
       dsa: 0,
       backend: 0,
       college: 0,
       english: 0,
       blockchain: 0,
     };
+    const categorySeconds = buildCategorySecondsObject();
 
     records.forEach((record) => {
       const weekIndex = Math.floor((record.dayNumber - 1) / 7);
@@ -68,8 +85,13 @@ const getTrackerAnalytics = async (req, res, next) => {
       weekBuckets[weekIndex].hours += dayHours;
       if (record.completed) weekBuckets[weekIndex].completedDays += 1;
 
-      Object.keys(categories).forEach((key) => {
-        if (record.categories?.[key]) categories[key] += 1;
+      Object.keys(categoryDaysCount).forEach((key) => {
+        if (record.categories?.[key]) categoryDaysCount[key] += 1;
+      });
+
+      const dayCategorySeconds = record.categorySecondsLogged || buildCategorySecondsObject();
+      STUDY_CATEGORIES.forEach((key) => {
+        categorySeconds[key] += dayCategorySeconds[key] || 0;
       });
     });
 
@@ -83,7 +105,11 @@ const getTrackerAnalytics = async (req, res, next) => {
           hours: Number(w.hours.toFixed(2)),
           completedDays: w.completedDays,
         })),
-        categories,
+        categoryDaysCount,
+        categoryHours: STUDY_CATEGORIES.reduce((acc, key) => {
+          acc[key] = Number((categorySeconds[key] / 3600).toFixed(2));
+          return acc;
+        }, {}),
       },
     });
   } catch (error) {
