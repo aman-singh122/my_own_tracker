@@ -1,0 +1,160 @@
+const DayRecord = require("../models/DayRecord");
+const TimerSession = require("../models/TimerSession");
+const { getCurrentDayNumber } = require("../utils/trackerDate");
+
+const computeSeconds = (session) => {
+  if (!session) return 0;
+  if (session.status !== "running" || !session.startedAt) return session.accumulatedSeconds;
+  const now = Date.now();
+  const elapsed = Math.floor((now - new Date(session.startedAt).getTime()) / 1000);
+  return session.accumulatedSeconds + Math.max(elapsed, 0);
+};
+
+const getOrCreateTimerSession = async (userId, dayNumber = 1) => {
+  let session = await TimerSession.findOne({ user: userId });
+  if (!session) {
+    session = await TimerSession.create({
+      user: userId,
+      dayNumber,
+      status: "idle",
+      accumulatedSeconds: 0,
+      startedAt: null,
+    });
+  }
+  return session;
+};
+
+const startTimer = async (req, res, next) => {
+  try {
+    const dayNumber = Number(req.body.dayNumber);
+    const currentDayNumber = getCurrentDayNumber();
+
+    if (dayNumber !== currentDayNumber) {
+      return res.status(403).json({
+        message: `Timer can only start on current day. Active day is Day ${currentDayNumber}.`,
+      });
+    }
+
+    const day = await DayRecord.findOne({ user: req.user._id, dayNumber });
+    if (!day) {
+      return res.status(404).json({ message: "Invalid day number" });
+    }
+
+    const session = await getOrCreateTimerSession(req.user._id, dayNumber);
+
+    if (session.status === "running") {
+      return res.status(400).json({ message: "Timer is already running" });
+    }
+
+    session.dayNumber = dayNumber;
+    session.status = "running";
+    session.startedAt = new Date();
+    await session.save();
+
+    res.status(200).json({
+      message: "Timer started",
+      timer: {
+        dayNumber: session.dayNumber,
+        status: session.status,
+        seconds: computeSeconds(session),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const pauseTimer = async (req, res, next) => {
+  try {
+    const session = await getOrCreateTimerSession(req.user._id);
+
+    if (session.status !== "running") {
+      return res.status(400).json({ message: "Timer is not running" });
+    }
+
+    const totalSeconds = computeSeconds(session);
+    session.accumulatedSeconds = totalSeconds;
+    session.status = "paused";
+    session.startedAt = null;
+    await session.save();
+
+    res.status(200).json({
+      message: "Timer paused",
+      timer: {
+        dayNumber: session.dayNumber,
+        status: session.status,
+        seconds: session.accumulatedSeconds,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const stopTimer = async (req, res, next) => {
+  try {
+    const session = await getOrCreateTimerSession(req.user._id);
+
+    if (session.status === "idle" && session.accumulatedSeconds === 0) {
+      return res.status(400).json({ message: "No active timer to stop" });
+    }
+
+    const currentDayNumber = getCurrentDayNumber();
+    if (session.dayNumber !== currentDayNumber) {
+      return res.status(403).json({
+        message: `Timer save is locked for Day ${session.dayNumber}. Only Day ${currentDayNumber} can be modified.`,
+      });
+    }
+
+    const totalSeconds = computeSeconds(session);
+    const day = await DayRecord.findOne({ user: req.user._id, dayNumber: session.dayNumber });
+
+    if (!day) {
+      return res.status(404).json({ message: "Day record not found" });
+    }
+
+    day.timerSecondsLogged += totalSeconds;
+    await day.save();
+
+    session.status = "idle";
+    session.startedAt = null;
+    session.accumulatedSeconds = 0;
+    await session.save();
+
+    res.status(200).json({
+      message: "Timer stopped and saved",
+      savedSeconds: totalSeconds,
+      day: {
+        dayNumber: day.dayNumber,
+        timerSecondsLogged: day.timerSecondsLogged,
+        totalHours: Number((day.manualHoursLogged + day.timerSecondsLogged / 3600).toFixed(2)),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getCurrentTimer = async (req, res, next) => {
+  try {
+    const session = await getOrCreateTimerSession(req.user._id, getCurrentDayNumber());
+
+    res.status(200).json({
+      timer: {
+        dayNumber: session.dayNumber,
+        status: session.status,
+        seconds: computeSeconds(session),
+      },
+      currentDayNumber: getCurrentDayNumber(),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  startTimer,
+  pauseTimer,
+  stopTimer,
+  getCurrentTimer,
+};
