@@ -22,13 +22,15 @@ export default function DayDetailPage() {
     completed: false,
   });
   const [totalHours, setTotalHours] = useState(0);
-  const [mode, setMode] = useState("readonly");
+  const [timerHours, setTimerHours] = useState(0);
+  const [manualHours, setManualHours] = useState(0);
+  const [mode, setMode] = useState("locked");
   const [currentDayNumber, setCurrentDayNumber] = useState(1);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const isReadOnly = mode !== "editable";
+  const isEditable = mode === "editable";
 
   const loadDay = async () => {
     try {
@@ -44,7 +46,9 @@ export default function DayDetailPage() {
         completed: day.completed,
       });
       setTotalHours(day.totalHours || 0);
-      setMode(data.access?.mode || "readonly");
+      setTimerHours(day.timerHours || 0);
+      setManualHours(day.manualHours || 0);
+      setMode(data.access?.mode || "locked");
       setCurrentDayNumber(data.access?.currentDayNumber || 1);
     } catch (err) {
       setError(err.message);
@@ -79,7 +83,7 @@ export default function DayDetailPage() {
   }, [dayNumber]);
 
   const toggleCategory = (key) => {
-    if (isReadOnly) return;
+    if (!isEditable) return;
     setForm((prev) => ({
       ...prev,
       categories: { ...prev.categories, [key]: !prev.categories[key] },
@@ -88,7 +92,7 @@ export default function DayDetailPage() {
 
   const onSave = async (e) => {
     e.preventDefault();
-    if (isReadOnly) return;
+    if (!isEditable) return;
 
     setSaving(true);
     setError("");
@@ -98,6 +102,9 @@ export default function DayDetailPage() {
         body: JSON.stringify(form),
       });
       setTotalHours(data.day.totalHours || 0);
+      setTimerHours(data.day.timerHours || 0);
+      setManualHours(data.day.manualHours || 0);
+      router.push("/dashboard");
     } catch (err) {
       setError(err.message);
     } finally {
@@ -109,7 +116,7 @@ export default function DayDetailPage() {
     return <main className="app-shell">Loading day...</main>;
   }
 
-  if (mode === "locked") {
+  if (!isEditable) {
     return (
       <main className="app-shell space-y-4">
         <header className="flex justify-between items-center">
@@ -117,8 +124,8 @@ export default function DayDetailPage() {
           <button className="btn btn-muted" onClick={() => router.push("/dashboard")}>Back</button>
         </header>
         <section className="panel p-5">
-          <p className="text-red-300">This future day is locked.</p>
-          <p className="text-sm text-slate-300 mt-2">Current active day is Day {currentDayNumber}.</p>
+          <p className="text-red-300">{error || "This day is locked."}</p>
+          <p className="text-sm text-slate-300 mt-2">Current open day is Day {currentDayNumber}.</p>
         </section>
       </main>
     );
@@ -129,11 +136,7 @@ export default function DayDetailPage() {
       <header className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Day {dayNumber}</h1>
-          <p className="text-xs text-slate-400">
-            {isReadOnly
-              ? `Past day is read-only. Only Day ${currentDayNumber} is editable today.`
-              : "Current day is editable."}
-          </p>
+          <p className="text-xs text-slate-400">Current open day. Saving will lock this day and unlock next.</p>
         </div>
         <button className="btn btn-muted" onClick={() => router.push("/dashboard")}>Back</button>
       </header>
@@ -141,7 +144,11 @@ export default function DayDetailPage() {
       {error ? <p className="text-red-400 text-sm">{error}</p> : null}
 
       <form className="panel p-5 space-y-4" onSubmit={onSave}>
-        <p className="text-sm text-slate-300">Total Hours (manual + timer): {totalHours}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <p className="text-sm text-slate-300">Timer Hours: {timerHours}</p>
+          <p className="text-sm text-slate-300">Manual Hours: {manualHours}</p>
+          <p className="text-sm text-slate-300">Total Hours: {totalHours}</p>
+        </div>
 
         <div>
           <p className="font-semibold mb-2">Study Categories</p>
@@ -152,7 +159,7 @@ export default function DayDetailPage() {
                   type="checkbox"
                   checked={form.categories[key]}
                   onChange={() => toggleCategory(key)}
-                  disabled={isReadOnly}
+                  disabled={!isEditable}
                 />
                 {key}
               </label>
@@ -170,7 +177,7 @@ export default function DayDetailPage() {
             step="0.25"
             value={form.manualHoursLogged}
             onChange={(e) => setForm({ ...form, manualHoursLogged: Number(e.target.value) })}
-            disabled={isReadOnly}
+            disabled={!isEditable}
           />
         </div>
 
@@ -180,7 +187,7 @@ export default function DayDetailPage() {
             className="input min-h-24"
             value={form.notes}
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
-            disabled={isReadOnly}
+            disabled={!isEditable}
           />
         </div>
 
@@ -190,7 +197,7 @@ export default function DayDetailPage() {
             className="input min-h-24"
             value={form.reflection}
             onChange={(e) => setForm({ ...form, reflection: e.target.value })}
-            disabled={isReadOnly}
+            disabled={!isEditable}
           />
         </div>
 
@@ -200,7 +207,7 @@ export default function DayDetailPage() {
             className="input min-h-24"
             value={form.weeklyReflection}
             onChange={(e) => setForm({ ...form, weeklyReflection: e.target.value })}
-            disabled={isReadOnly}
+            disabled={!isEditable}
           />
         </div>
 
@@ -210,27 +217,15 @@ export default function DayDetailPage() {
               type="checkbox"
               checked={form.revisionMarked}
               onChange={(e) => setForm({ ...form, revisionMarked: e.target.checked })}
-              disabled={isReadOnly}
+              disabled={!isEditable}
             />
             Revision Marked
           </label>
-
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={form.completed}
-              onChange={(e) => setForm({ ...form, completed: e.target.checked })}
-              disabled={isReadOnly}
-            />
-            Day Completed
-          </label>
         </div>
 
-        {!isReadOnly ? (
-          <button className="btn btn-primary" disabled={saving} type="submit">
-            {saving ? "Saving..." : "Save Day"}
-          </button>
-        ) : null}
+        <button className="btn btn-primary" disabled={saving} type="submit">
+          {saving ? "Saving..." : "Save & Lock Day"}
+        </button>
       </form>
     </main>
   );

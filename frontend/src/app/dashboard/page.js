@@ -137,7 +137,13 @@ export default function DashboardPage() {
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="panel p-4"><p className="text-sm text-slate-300">Completed Days</p><p className="text-2xl font-bold">{summary?.completedDays || 0}</p></div>
         <div className="panel p-4"><p className="text-sm text-slate-300">Remaining Days</p><p className="text-2xl font-bold">{summary?.remainingDays || 180}</p></div>
-        <div className="panel p-4"><p className="text-sm text-slate-300">Total Hours</p><p className="text-2xl font-bold">{summary?.totalHours || 0}</p></div>
+        <div className="panel p-4">
+          <p className="text-sm text-slate-300">Total Hours</p>
+          <p className="text-2xl font-bold">{summary?.totalHours || 0}</p>
+          <p className="text-[11px] text-slate-400 mt-1">
+            Timer: {summary?.timerHours || 0}h | Manual: {summary?.manualHours || 0}h
+          </p>
+        </div>
         <div className="panel p-4"><p className="text-sm text-slate-300">Progress</p><p className="text-2xl font-bold">{summary?.progressPercent || 0}%</p></div>
       </section>
 
@@ -172,7 +178,9 @@ export default function DashboardPage() {
 
           <section className="panel p-4 space-y-3">
             <h2 className="text-lg font-semibold">Days Grid</h2>
-            <p className="text-xs text-slate-400">Only Day {currentDayNumber} is clickable today. Past days are read-only. Future days stay locked.</p>
+            <p className="text-xs text-slate-400">
+              Save active day to lock it (red) and unlock next day automatically.
+            </p>
             <DayGrid days={days} currentDayNumber={currentDayNumber} />
           </section>
         </>

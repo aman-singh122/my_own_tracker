@@ -1,9 +1,11 @@
 const DayRecord = require("../models/DayRecord");
-const { TRACKER_TOTAL_DAYS, getCurrentDayNumber, startDateAtUtcMidnight } = require("../utils/trackerDate");
+const { TRACKER_TOTAL_DAYS, startDateAtUtcMidnight } = require("../utils/trackerDate");
 const { STUDY_CATEGORIES, buildCategorySecondsObject } = require("../utils/studyCategories");
+const { getProgressState } = require("../services/progressionService");
 
 const formatDayRecord = (record) => {
   const timerHours = record.timerSecondsLogged / 3600;
+  const manualHours = record.manualHoursLogged || 0;
   const totalHours = Number((timerHours + record.manualHoursLogged).toFixed(2));
   const categorySeconds = record.categorySecondsLogged || buildCategorySecondsObject();
   const categoryHours = STUDY_CATEGORIES.reduce((acc, key) => {
@@ -12,6 +14,8 @@ const formatDayRecord = (record) => {
   }, {});
   return {
     ...record.toObject(),
+    timerHours: Number(timerHours.toFixed(2)),
+    manualHours: Number(manualHours.toFixed(2)),
     totalHours,
     categoryHours,
   };
@@ -20,21 +24,25 @@ const formatDayRecord = (record) => {
 const getDashboard = async (req, res, next) => {
   try {
     const records = await DayRecord.find({ user: req.user._id }).sort({ dayNumber: 1 });
-    const currentDayNumber = getCurrentDayNumber();
+    const progressState = await getProgressState(req.user._id);
+    const activeDayNumber = progressState.activeDayNumber || TRACKER_TOTAL_DAYS;
 
     const categorySecondsTotals = buildCategorySecondsObject();
     const totals = records.reduce(
       (acc, record) => {
+        const timerHours = record.timerSecondsLogged / 3600;
         const totalHours = record.manualHoursLogged + record.timerSecondsLogged / 3600;
         if (record.completed) acc.completedDays += 1;
         acc.totalHours += totalHours;
+        acc.timerHours += timerHours;
+        acc.manualHours += record.manualHoursLogged;
         const categorySeconds = record.categorySecondsLogged || buildCategorySecondsObject();
         STUDY_CATEGORIES.forEach((key) => {
           categorySecondsTotals[key] += categorySeconds[key] || 0;
         });
         return acc;
       },
-      { completedDays: 0, totalHours: 0 }
+      { completedDays: 0, totalHours: 0, timerHours: 0, manualHours: 0 }
     );
 
     const progressPercent = Number(((totals.completedDays / TRACKER_TOTAL_DAYS) * 100).toFixed(2));
@@ -45,8 +53,12 @@ const getDashboard = async (req, res, next) => {
         completedDays: totals.completedDays,
         remainingDays: TRACKER_TOTAL_DAYS - totals.completedDays,
         totalHours: Number(totals.totalHours.toFixed(2)),
+        timerHours: Number(totals.timerHours.toFixed(2)),
+        manualHours: Number(totals.manualHours.toFixed(2)),
         progressPercent,
-        currentDayNumber,
+        currentDayNumber: activeDayNumber,
+        activeDayNumber,
+        allCompleted: progressState.allCompleted,
         trackerStartDate: startDateAtUtcMidnight(),
         categoryHours: STUDY_CATEGORIES.reduce((acc, key) => {
           acc[key] = Number((categorySecondsTotals[key] / 3600).toFixed(2));
@@ -62,7 +74,8 @@ const getDashboard = async (req, res, next) => {
 const getTrackerAnalytics = async (req, res, next) => {
   try {
     const records = await DayRecord.find({ user: req.user._id }).sort({ dayNumber: 1 });
-    const currentDayNumber = getCurrentDayNumber();
+    const progressState = await getProgressState(req.user._id);
+    const activeDayNumber = progressState.activeDayNumber || TRACKER_TOTAL_DAYS;
 
     const weekBuckets = Array.from({ length: Math.ceil(TRACKER_TOTAL_DAYS / 7) }, (_, index) => ({
       week: index + 1,
@@ -95,11 +108,12 @@ const getTrackerAnalytics = async (req, res, next) => {
       });
     });
 
-    const focusedWeeks = weekBuckets.slice(0, Math.ceil(currentDayNumber / 7));
+    const focusedWeeks = weekBuckets.slice(0, Math.ceil(activeDayNumber / 7));
 
     res.status(200).json({
       analytics: {
-        currentDayNumber,
+        currentDayNumber: activeDayNumber,
+        activeDayNumber,
         weekly: focusedWeeks.map((w) => ({
           week: w.week,
           hours: Number(w.hours.toFixed(2)),
@@ -120,13 +134,8 @@ const getTrackerAnalytics = async (req, res, next) => {
 const getDayByNumber = async (req, res, next) => {
   try {
     const dayNumber = Number(req.params.dayNumber);
-    const currentDayNumber = getCurrentDayNumber();
-
-    if (dayNumber > currentDayNumber) {
-      return res.status(403).json({
-        message: `Future day is locked. Current active day is Day ${currentDayNumber}.`,
-      });
-    }
+    const progressState = await getProgressState(req.user._id);
+    const activeDayNumber = progressState.activeDayNumber;
 
     const record = await DayRecord.findOne({ user: req.user._id, dayNumber });
 
@@ -134,13 +143,27 @@ const getDayByNumber = async (req, res, next) => {
       return res.status(404).json({ message: "Day record not found" });
     }
 
-    const mode = dayNumber === currentDayNumber ? "editable" : "readonly";
+    if (!activeDayNumber) {
+      return res.status(403).json({
+        message: "All 180 days are completed.",
+      });
+    }
+
+    if (dayNumber !== activeDayNumber) {
+      const modeMessage = dayNumber < activeDayNumber
+        ? "This day is already completed and locked."
+        : "This day is locked. Complete previous day first.";
+      return res.status(403).json({
+        message: `${modeMessage} Current open day is Day ${activeDayNumber}.`,
+      });
+    }
 
     res.status(200).json({
       day: formatDayRecord(record),
       access: {
-        mode,
-        currentDayNumber,
+        mode: "editable",
+        currentDayNumber: activeDayNumber,
+        activeDayNumber,
       },
     });
   } catch (error) {
@@ -151,12 +174,15 @@ const getDayByNumber = async (req, res, next) => {
 const updateDayByNumber = async (req, res, next) => {
   try {
     const dayNumber = Number(req.params.dayNumber);
-    const currentDayNumber = getCurrentDayNumber();
+    const progressState = await getProgressState(req.user._id);
+    const activeDayNumber = progressState.activeDayNumber;
 
-    if (dayNumber !== currentDayNumber) {
-      const reason = dayNumber < currentDayNumber ? "Past days are read-only" : "Future days are locked";
+    if (!activeDayNumber || dayNumber !== activeDayNumber) {
+      const reason = dayNumber < (activeDayNumber || TRACKER_TOTAL_DAYS)
+        ? "This day is already completed and locked"
+        : "This day is locked";
       return res.status(403).json({
-        message: `${reason}. Only Day ${currentDayNumber} can be updated today.`,
+        message: `${reason}. Only Day ${activeDayNumber} can be updated now.`,
       });
     }
 
@@ -190,11 +216,17 @@ const updateDayByNumber = async (req, res, next) => {
     if (typeof manualHoursLogged === "number") record.manualHoursLogged = manualHoursLogged;
     if (typeof completed === "boolean") record.completed = completed;
 
+    // Saving active day finalizes it and unlocks next day.
+    record.completed = true;
+
     await record.save();
 
+    const nextProgressState = await getProgressState(req.user._id);
+
     res.status(200).json({
-      message: "Day updated successfully",
+      message: "Day saved and locked successfully",
       day: formatDayRecord(record),
+      nextActiveDayNumber: nextProgressState.activeDayNumber,
     });
   } catch (error) {
     next(error);

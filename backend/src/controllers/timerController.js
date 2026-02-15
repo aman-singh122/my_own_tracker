@@ -1,7 +1,7 @@
 const DayRecord = require("../models/DayRecord");
 const TimerSession = require("../models/TimerSession");
-const { getCurrentDayNumber } = require("../utils/trackerDate");
 const { STUDY_CATEGORIES, buildCategorySecondsObject } = require("../utils/studyCategories");
+const { getProgressState } = require("../services/progressionService");
 
 const computeSeconds = (session) => {
   if (!session) return 0;
@@ -36,11 +36,16 @@ const startTimer = async (req, res, next) => {
   try {
     const dayNumber = Number(req.body.dayNumber);
     const category = String(req.body.category || "").toLowerCase();
-    const currentDayNumber = getCurrentDayNumber();
+    const progressState = await getProgressState(req.user._id);
+    const activeDayNumber = progressState.activeDayNumber;
 
-    if (dayNumber !== currentDayNumber) {
+    if (!activeDayNumber) {
+      return res.status(403).json({ message: "All 180 days are completed. Timer is locked." });
+    }
+
+    if (dayNumber !== activeDayNumber) {
       return res.status(403).json({
-        message: `Timer can only start on current day. Active day is Day ${currentDayNumber}.`,
+        message: `Timer can only start on active day. Open day is Day ${activeDayNumber}.`,
       });
     }
 
@@ -115,10 +120,15 @@ const stopTimer = async (req, res, next) => {
       return res.status(400).json({ message: "No active timer to stop" });
     }
 
-    const currentDayNumber = getCurrentDayNumber();
-    if (session.dayNumber !== currentDayNumber) {
+    const progressState = await getProgressState(req.user._id);
+    const activeDayNumber = progressState.activeDayNumber;
+    if (!activeDayNumber) {
+      return res.status(403).json({ message: "All 180 days are completed. Timer is locked." });
+    }
+
+    if (session.dayNumber !== activeDayNumber) {
       return res.status(403).json({
-        message: `Timer save is locked for Day ${session.dayNumber}. Only Day ${currentDayNumber} can be modified.`,
+        message: `Timer save is locked for Day ${session.dayNumber}. Only Day ${activeDayNumber} can be modified.`,
       });
     }
 
@@ -161,7 +171,9 @@ const stopTimer = async (req, res, next) => {
 
 const getCurrentTimer = async (req, res, next) => {
   try {
-    const session = await getOrCreateTimerSession(req.user._id, getCurrentDayNumber());
+    const progressState = await getProgressState(req.user._id);
+    const activeDayNumber = progressState.activeDayNumber || 1;
+    const session = await getOrCreateTimerSession(req.user._id, activeDayNumber);
 
     res.status(200).json({
       timer: {
@@ -170,7 +182,8 @@ const getCurrentTimer = async (req, res, next) => {
         status: session.status,
         seconds: computeSeconds(session),
       },
-      currentDayNumber: getCurrentDayNumber(),
+      currentDayNumber: activeDayNumber,
+      activeDayNumber,
     });
   } catch (error) {
     next(error);
