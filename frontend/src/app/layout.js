@@ -1,8 +1,8 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "180-Day Productivity Tracker",
-  description: "Track 6-hour study discipline for 180 days",
+  title: "FAANG 175-Day DSA Challenge",
+  description: "175-day disciplined roadmap for DSA, system design, and evening execution",
 };
 
 export default function RootLayout({ children }) {

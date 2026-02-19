@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const { STUDY_CATEGORIES } = require("../utils/studyCategories");
+const { TRACKER_TOTAL_DAYS } = require("../utils/trackerDate");
 
 const timerSessionSchema = new mongoose.Schema(
   {
@@ -13,7 +14,7 @@ const timerSessionSchema = new mongoose.Schema(
       type: Number,
       required: true,
       min: 1,
-      max: 180,
+      max: TRACKER_TOTAL_DAYS,
     },
     status: {
       type: String,

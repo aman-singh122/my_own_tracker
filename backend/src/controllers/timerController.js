@@ -40,7 +40,7 @@ const startTimer = async (req, res, next) => {
     const activeDayNumber = progressState.activeDayNumber;
 
     if (!activeDayNumber) {
-      return res.status(403).json({ message: "All 180 days are completed. Timer is locked." });
+      return res.status(403).json({ message: "All 175 days are completed. Timer is locked." });
     }
 
     if (dayNumber !== activeDayNumber) {
@@ -123,7 +123,7 @@ const stopTimer = async (req, res, next) => {
     const progressState = await getProgressState(req.user._id);
     const activeDayNumber = progressState.activeDayNumber;
     if (!activeDayNumber) {
-      return res.status(403).json({ message: "All 180 days are completed. Timer is locked." });
+      return res.status(403).json({ message: "All 175 days are completed. Timer is locked." });
     }
 
     if (session.dayNumber !== activeDayNumber) {

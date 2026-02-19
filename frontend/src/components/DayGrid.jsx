@@ -11,37 +11,39 @@ export default function DayGrid({ days, currentDayNumber }) {
 
         const commonClass = "text-xs text-center py-2 rounded-md border transition";
 
+        let stateClass = "bg-slate-900/70 border-slate-700/60 text-slate-500";
+        let label = `Day ${day.dayNumber}`;
+        let title = "Locked day";
+
+        if (isCurrent) {
+          stateClass = "bg-cyan-500/25 border-cyan-300/50 hover:bg-cyan-500/35";
+          title = "Open day";
+        } else if (isCompleted) {
+          stateClass = "bg-red-500/20 border-red-300/40 text-red-100 hover:bg-red-500/30";
+          label = `Day ${day.dayNumber} Done`;
+          title = "Completed day (read-only)";
+        }
+
         if (isCurrent) {
           return (
             <Link
               href={`/days/${day.dayNumber}`}
               key={day._id}
-              className={`${commonClass} bg-cyan-500/25 border-cyan-300/50 hover:bg-cyan-500/35`}
+              className={`${commonClass} ${stateClass}`}
+              title={title}
             >
-              Day {day.dayNumber}
+              {label}
             </Link>
-          );
-        }
-
-        if (isCompleted) {
-          return (
-            <div
-              key={day._id}
-              className={`${commonClass} bg-red-500/20 border-red-300/40 text-red-100`}
-              title="Completed day (locked)"
-            >
-              Day {day.dayNumber} Done
-            </div>
           );
         }
 
         return (
           <div
             key={day._id}
-            className={`${commonClass} bg-slate-900/70 border-slate-700/60 text-slate-500 cursor-not-allowed`}
-            title="Locked day"
+            className={`${commonClass} ${stateClass} ${isCompleted ? "" : "cursor-not-allowed"}`}
+            title={title}
           >
-            Day {day.dayNumber} Lock
+            {label}
           </div>
         );
       })}

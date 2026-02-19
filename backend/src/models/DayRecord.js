@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { TRACKER_TOTAL_DAYS } = require("../utils/trackerDate");
 
 const dayRecordSchema = new mongoose.Schema(
   {
@@ -12,18 +13,52 @@ const dayRecordSchema = new mongoose.Schema(
       type: Number,
       required: true,
       min: 1,
-      max: 180,
+      max: TRACKER_TOTAL_DAYS,
     },
     date: {
       type: Date,
       required: true,
     },
-    categories: {
-      dsa: { type: Boolean, default: false },
-      backend: { type: Boolean, default: false },
-      college: { type: Boolean, default: false },
-      english: { type: Boolean, default: false },
-      blockchain: { type: Boolean, default: false },
+    challengeType: {
+      type: String,
+      default: "faang-175-dsa",
+    },
+    slots: {
+      morningDsa: {
+        checklist: {
+          deepFocusCompleted: { type: Boolean, default: false },
+          lectureOrRevisionDone: { type: Boolean, default: false },
+          questionPracticeDone: { type: Boolean, default: false },
+          finishedBefore1020: { type: Boolean, default: false },
+        },
+        notes: { type: String, default: "", maxlength: 2000 },
+        hoursSpent: { type: Number, default: 0, min: 0, max: 8 },
+      },
+      afternoonSystemDesign: {
+        checklist: {
+          lectureDone: { type: Boolean, default: false },
+          notesDone: { type: Boolean, default: false },
+          revisionDone: { type: Boolean, default: false },
+          genAiTopicDone: { type: Boolean, default: false },
+        },
+        notes: { type: String, default: "", maxlength: 2000 },
+        hoursSpent: { type: Number, default: 0, min: 0, max: 8 },
+      },
+      eveningExecution: {
+        checklist: {
+          primaryWorkDone: { type: Boolean, default: false },
+          backendRevisionDone: { type: Boolean, default: false },
+          jsOrReactConceptDone: { type: Boolean, default: false },
+          focusedSessionDone: { type: Boolean, default: false },
+        },
+        notes: { type: String, default: "", maxlength: 2000 },
+        hoursSpent: { type: Number, default: 0, min: 0, max: 8 },
+      },
+    },
+    discipline: {
+      noCopyPaste: { type: Boolean, default: false },
+      noReels: { type: Boolean, default: false },
+      noFap: { type: Boolean, default: false },
     },
     notes: {
       type: String,
@@ -65,6 +100,14 @@ const dayRecordSchema = new mongoose.Schema(
     completed: {
       type: Boolean,
       default: false,
+    },
+    locked: {
+      type: Boolean,
+      default: false,
+    },
+    lockedAt: {
+      type: Date,
+      default: null,
     },
   },
   { timestamps: true }

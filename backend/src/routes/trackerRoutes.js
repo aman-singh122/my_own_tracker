@@ -18,7 +18,7 @@ router.get("/analytics", getTrackerAnalytics);
 
 router.get(
   "/days/:dayNumber",
-  [param("dayNumber").isInt({ min: 1, max: 180 })],
+  [param("dayNumber").isInt({ min: 1, max: 175 })],
   handleValidation,
   getDayByNumber
 );
@@ -26,13 +26,13 @@ router.get(
 router.put(
   "/days/:dayNumber",
   [
-    param("dayNumber").isInt({ min: 1, max: 180 }),
-    body("manualHoursLogged").optional().isFloat({ min: 0, max: 24 }),
+    param("dayNumber").isInt({ min: 1, max: 175 }),
     body("notes").optional().isString().isLength({ max: 3000 }),
     body("reflection").optional().isString().isLength({ max: 3000 }),
     body("weeklyReflection").optional().isString().isLength({ max: 3000 }),
     body("revisionMarked").optional().isBoolean(),
-    body("completed").optional().isBoolean(),
+    body("slots").optional().isObject(),
+    body("discipline").optional().isObject(),
   ],
   handleValidation,
   updateDayByNumber

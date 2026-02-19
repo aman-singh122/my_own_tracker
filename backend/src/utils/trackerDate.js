@@ -1,4 +1,4 @@
-const TRACKER_TOTAL_DAYS = 180;
+const TRACKER_TOTAL_DAYS = Number(process.env.CHALLENGE_TOTAL_DAYS || 175);
 
 const startDateAtUtcMidnight = () => {
   const raw = process.env.TRACKER_START_DATE || "2026-02-14";

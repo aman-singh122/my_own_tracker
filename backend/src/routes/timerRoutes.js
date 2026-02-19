@@ -19,7 +19,7 @@ router.get("/current", getCurrentTimer);
 router.post(
   "/start",
   [
-    body("dayNumber").isInt({ min: 1, max: 180 }),
+    body("dayNumber").isInt({ min: 1, max: 175 }),
     body("category").isString().isIn(STUDY_CATEGORIES),
   ],
   handleValidation,
