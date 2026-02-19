@@ -60,6 +60,17 @@ const dayRecordSchema = new mongoose.Schema(
       noReels: { type: Boolean, default: false },
       noFap: { type: Boolean, default: false },
     },
+    quality: {
+      morningFocusScore: { type: Number, default: 0, min: 0, max: 5 },
+      afternoonFocusScore: { type: Number, default: 0, min: 0, max: 5 },
+      eveningFocusScore: { type: Number, default: 0, min: 0, max: 5 },
+      energyScore: { type: Number, default: 0, min: 0, max: 5 },
+    },
+    interruptions: {
+      morning: { type: Number, default: 0, min: 0, max: 50 },
+      afternoon: { type: Number, default: 0, min: 0, max: 50 },
+      evening: { type: Number, default: 0, min: 0, max: 50 },
+    },
     notes: {
       type: String,
       default: "",

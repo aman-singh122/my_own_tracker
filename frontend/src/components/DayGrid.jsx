@@ -24,27 +24,15 @@ export default function DayGrid({ days, currentDayNumber }) {
           title = "Completed day (read-only)";
         }
 
-        if (isCurrent) {
-          return (
-            <Link
-              href={`/days/${day.dayNumber}`}
-              key={day._id}
-              className={`${commonClass} ${stateClass}`}
-              title={title}
-            >
-              {label}
-            </Link>
-          );
-        }
-
         return (
-          <div
+          <Link
+            href={`/days/${day.dayNumber}`}
             key={day._id}
-            className={`${commonClass} ${stateClass} ${isCompleted ? "" : "cursor-not-allowed"}`}
+            className={`${commonClass} ${stateClass} ${!isCurrent && !isCompleted ? "opacity-80" : ""}`}
             title={title}
           >
             {label}
-          </div>
+          </Link>
         );
       })}
     </div>

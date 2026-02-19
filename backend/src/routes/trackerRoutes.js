@@ -5,6 +5,7 @@ const {
   getTrackerAnalytics,
   getDayByNumber,
   updateDayByNumber,
+  exportTrackerData,
 } = require("../controllers/trackerController");
 const protect = require("../middleware/authMiddleware");
 const handleValidation = require("../middleware/validateMiddleware");
@@ -15,6 +16,7 @@ router.use(protect);
 
 router.get("/dashboard", getDashboard);
 router.get("/analytics", getTrackerAnalytics);
+router.get("/export", exportTrackerData);
 
 router.get(
   "/days/:dayNumber",
@@ -33,6 +35,8 @@ router.put(
     body("revisionMarked").optional().isBoolean(),
     body("slots").optional().isObject(),
     body("discipline").optional().isObject(),
+    body("quality").optional().isObject(),
+    body("interruptions").optional().isObject(),
   ],
   handleValidation,
   updateDayByNumber

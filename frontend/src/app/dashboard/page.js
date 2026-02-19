@@ -35,6 +35,27 @@ const WeeklyGraph = ({ weekly = [] }) => {
   );
 };
 
+const Heatmap = ({ points = [] }) => (
+  <section className="panel p-5 space-y-3">
+    <h2 className="text-xl font-semibold">Focus Heatmap</h2>
+    <div className="grid grid-cols-7 sm:grid-cols-14 md:grid-cols-25 gap-1">
+      {points.slice(0, 175).map((p) => (
+        <div
+          key={p.dayNumber}
+          className={`h-4 rounded ${{
+            0: "bg-slate-800",
+            1: "bg-cyan-900",
+            2: "bg-cyan-700",
+            3: "bg-cyan-500",
+            4: "bg-cyan-300",
+          }[p.intensity]}`}
+          title={`Day ${p.dayNumber} | Intensity ${p.intensity}`}
+        />
+      ))}
+    </div>
+  </section>
+);
+
 export default function DashboardPage() {
   const [days, setDays] = useState([]);
   const [summary, setSummary] = useState(null);
@@ -78,6 +99,21 @@ export default function DashboardPage() {
     router.push("/login");
   };
 
+  const downloadBackup = async () => {
+    try {
+      const data = await apiRequest("/tracker/export");
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `faang-175-backup-day-${activeDayNumber || "x"}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.message || "Backup export failed");
+    }
+  };
+
   if (loading) return <main className="app-shell">Loading challenge dashboard...</main>;
 
   return (
@@ -87,7 +123,10 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-bold tracking-tight">FAANG 175-Day War Room</h1>
           <p className="text-slate-300 text-sm">Open day: Day {activeDayNumber} | Total challenge: 175 days</p>
         </div>
-        <button onClick={logout} className="btn btn-muted">Logout</button>
+        <div className="flex gap-2">
+          <button onClick={downloadBackup} className="btn btn-muted">Export Backup</button>
+          <button onClick={logout} className="btn btn-muted">Logout</button>
+        </div>
       </header>
 
       {error ? <p className="text-red-400 text-sm">{error}</p> : null}
@@ -99,6 +138,20 @@ export default function DashboardPage() {
         <div className="panel p-4"><p className="text-sm text-slate-300">Progress</p><p className="text-2xl font-bold">{summary?.progressPercent || 0}%</p></div>
         <div className="panel p-4"><p className="text-sm text-slate-300">Open Day</p><p className="text-2xl font-bold">{activeDayNumber || "-"}</p></div>
       </section>
+
+      <section className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="panel p-4"><p className="text-sm text-slate-300">Current Streak</p><p className="text-2xl font-bold">{summary?.currentStreak || 0}</p></div>
+        <div className="panel p-4"><p className="text-sm text-slate-300">Best Streak</p><p className="text-2xl font-bold">{summary?.bestStreak || 0}</p></div>
+        <div className="panel p-4"><p className="text-sm text-slate-300">Target Met Days</p><p className="text-2xl font-bold">{summary?.targetMetDays || 0}</p></div>
+        <div className="panel p-4"><p className="text-sm text-slate-300">Discipline Score</p><p className="text-2xl font-bold">{summary?.averageDiscipline || 0}%</p></div>
+      </section>
+
+      {summary?.todayRisk ? (
+        <section className="rounded-xl border border-yellow-400/35 bg-yellow-500/10 p-4">
+          <p className="text-sm font-semibold text-yellow-100">Risk Alert</p>
+          <p className="text-xs text-yellow-50 mt-1">Morning slot is not started yet. Protect your momentum now.</p>
+        </section>
+      ) : null}
 
       <section className="panel p-5 space-y-3">
         <h2 className="text-xl font-semibold">Daily Slot Blueprint</h2>
@@ -116,6 +169,10 @@ export default function DashboardPage() {
             <p className="text-xs text-slate-300 mt-2">6:00 PM onward, 2.5h college exam prep or backend/JS/React revision.</p>
           </div>
         </div>
+        <div className="rounded-xl border border-slate-700 bg-slate-900/55 p-4">
+          <p className="text-sm font-semibold">Today Slot-2 Plan</p>
+          <p className="text-xs text-slate-300 mt-2">{summary?.todayPlan?.systemDesignPlan || "Follow your system design track."}</p>
+        </div>
         <p className="text-xs text-slate-400">Rule: Open a day, complete checklist, Save & Lock. That day turns red. Next day opens automatically.</p>
       </section>
 
@@ -125,6 +182,7 @@ export default function DashboardPage() {
       </section>
 
       <WeeklyGraph weekly={analytics?.weekly || []} />
+      <Heatmap points={analytics?.heatmap || []} />
     </main>
   );
 }

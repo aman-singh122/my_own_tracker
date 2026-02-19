@@ -65,7 +65,9 @@ const ChecklistFields = ({ checklist, onToggle, disabled }) => (
           onChange={() => onToggle(key)}
           disabled={disabled}
         />
-        {key}
+        {key
+          .replace(/([A-Z])/g, " $1")
+          .replace(/^./, (s) => s.toUpperCase())}
       </label>
     ))}
   </div>
@@ -282,9 +284,16 @@ export default function DayDetailPage() {
         </div>
 
         {isEditable ? (
-          <button className="btn btn-primary" type="submit" disabled={saving}>
-            {saving ? "Saving..." : "Save & Lock Day"}
-          </button>
+          <>
+            <button className="btn btn-primary hidden md:inline-flex" type="submit" disabled={saving}>
+              {saving ? "Saving..." : "Save & Lock Day"}
+            </button>
+            <div className="md:hidden fixed bottom-0 left-0 right-0 p-3 bg-slate-950/95 border-t border-slate-700 z-20">
+              <button className="btn btn-primary w-full" type="submit" disabled={saving}>
+                {saving ? "Saving..." : "Save & Lock Day"}
+              </button>
+            </div>
+          </>
         ) : null}
       </form>
     </main>

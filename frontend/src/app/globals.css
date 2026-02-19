@@ -24,7 +24,19 @@ body {
 .app-shell {
   max-width: 1220px;
   margin: 0 auto;
-  padding: 28px;
+  padding: 14px;
+}
+
+@media (min-width: 640px) {
+  .app-shell {
+    padding: 20px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-shell {
+    padding: 28px;
+  }
 }
 
 .panel {
@@ -53,6 +65,7 @@ body {
   font-weight: 600;
   transition: transform 0.14s ease, box-shadow 0.2s ease, filter 0.2s ease;
   box-shadow: 0 2px 0 rgba(0, 0, 0, 0.22);
+  min-height: 42px;
 }
 
 .btn-primary {
@@ -93,4 +106,8 @@ body {
   background: linear-gradient(180deg, rgba(30, 82, 139, 0.65), rgba(20, 60, 104, 0.8));
   box-shadow: 0 0 0 1px rgba(109, 214, 255, 0.18) inset;
   color: #e9f8ff;
+}
+
+textarea.input {
+  resize: vertical;
 }
